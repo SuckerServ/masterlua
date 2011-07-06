@@ -9,12 +9,12 @@ local users = {}
 
 -- Add 'suckerserv' domain
 users["suckerserv"] =  {}
--- Add 'suckerserv:admin' domain
+-- Add 'suckerserv:admin' domain, useless if using SuckerServ trunk, just activate auth/privileges module
 users["suckerserv:admin"] =  {}
 
 -- Add 'piernov' user in 'suckerserv' domain with public key '+6bf4eb8e23fa8447098eeaca4f4f5eafce25cedd4a5616a0' and right 'admin'
 users["suckerserv"]["piernov"] = {"+6bf4eb8e23fa8447098eeaca4f4f5eafce25cedd4a5616a0", "admin"}
--- Copy 'piernov' user to 'suckerserv:admin' domain
+-- Copy 'piernov' user to 'suckerserv:admin' domain, useless if using SuckerServ trunk, just activate auth/privileges module
 users["suckerserv:admin"]["piernov"] = users["suckerserv"]["piernov"] 
               
 require("net")
@@ -114,7 +114,7 @@ function master:processData(server, data)
         local arguments = _.to_array(string.gmatch(data, "[^ \n]+"))
         local request_id, name, domain = tonumber(arguments[2]), arguments[3], (arguments[4] or "")
         if not users[domain] then print_debug("[AUTH] auth n°"..request_id.." Domain "..domain.." doesn't exist!")  return end
-        if not users[domain][name][1] then print_debug("[AUTH] auth n°"..request_id.." User "..name.." doesn't exist!") return end
+        if not users[domain][name] or not users[domain][name][1] then print_debug("[AUTH] auth n°"..request_id.." User "..name.." doesn't exist!") return end
         challenges[request_id] = generate_challenge(users[domain][name][1])
         local challenge_str = challenges[request_id]:to_string()
         print_debug(string.format("[AUTH] Attempting auth n°%d for '%s@%s' from %s", request_id, name, domain or "", ip or "localhost"))
@@ -146,7 +146,7 @@ function master:processData(server, data)
             print_debug(string.format("[AUTH] auth n°%s: Domain '%s' doesn't exist!", request_id, domain))
             return 
         end
-        if not users[domain][name][1] then
+        if not users[domain][name] or not users[domain][name][1] then
             sendmsg(string.format("NameNotFound %d", request_id))
             print_debug(string.format("[AUTH] auth n°%s: User '%s' doesn't exist in domain '%s' !", request_id, name, domain))
             return 
