@@ -1,7 +1,7 @@
 local port = 25787
 local ip = "0.0.0.0"
-local sauermaster_host = "localhost"
-local sauermaster_port = 25787
+local sauermaster_host = "sauerbraten.org"
+local sauermaster_port = 28787
 local debug_mode = true
 
 local challenges = {}
@@ -16,46 +16,19 @@ users["suckerserv:admin"] =  {}
 users["suckerserv"]["piernov"] = {"+6bf4eb8e23fa8447098eeaca4f4f5eafce25cedd4a5616a0", "admin"}
 -- Copy 'piernov' user to 'suckerserv:admin' domain, useless if using SuckerServ trunk, just activate auth/privileges module
 users["suckerserv:admin"]["piernov"] = users["suckerserv"]["piernov"] 
-              
+
 require("net")
 require("crypto")
 local _ = require "script/package/underscore"
 local master = {}
 master.server = net.tcp_acceptor(ip, port)
-master.client = net.tcp_client()
-
--- function readData(client)
--- print("test")
-    -- master.client:async_read_until("\n", function(data)
-    -- print("test")
-        -- if data then
-        -- print("test")
-            -- print(data)
-            -- irc:readData(irc.client)
-        -- else
-            -- master:handleError("Read error")
-        -- end
-    -- end)
--- end
-
--- master.client:async_connect(sauermaster_host, sauermaster_port, function(errmsg) 
-    -- if errmsg then
-        -- master:handleError(errmsg)
-        -- return
-    -- end
--- end)
-
--- Generate chalauth challenge from a public key
-function generate_challenge(key)
-    local key = crypto.sauerecc.key(key)
-    local gen_challenge = key:generate_challenge()
-    return gen_challenge
-end
+local sauermaster = {}
+sauermaster.client = net.tcp_client()
 
 -- Print debug messages
 local function print_debug(msg)
     if debug_mode then
-        print(string.format("MASTER DEBUG %s", msg))
+        print(msg)
     end
 end
 
@@ -64,6 +37,66 @@ function master:handleError(errmsg, retry)
     if not errmsg then return end
     retry = retry or WAIT_TO_RECONNECT
     print_debug("[Error] : " .. errmsg)
+end
+
+-- Get server list from Sauerbraten Master Server
+local function send_serverlist()
+    -- Connect and send list request
+    function sauermaster:connectServer(client)
+        sauermaster.client:close()
+        sauermaster.client = net.tcp_client()
+        sauermaster.client:async_connect(sauermaster_host, sauermaster_port, function(errmsg) 
+            if errmsg then
+                master:handleError(errmsg)
+                return
+            end
+            local localAddress = sauermaster.client:local_endpoint()
+            print_debug(string.format("[MASTERCLIENT] : Local socket address %s:%s", localAddress.ip, localAddress.port))
+            sauermaster.client:async_send("list\n", function(errmsg)
+                if errmsg then
+                    master:handleError(errmsg)
+                    return 
+                end
+                sauermaster:readData(sauermaster.client) 
+            end)
+        end)
+    end
+
+    --Main Data Loop
+    function sauermaster:readData(client)
+        sauermaster.client:async_read_until("\n", function(data)
+            if data then
+                sauermaster:processData(client, data)
+                sauermaster:readData(sauermaster.client)
+            else
+                sendmsg("]")
+                for i,line in ipairs(_.to_array(string.gmatch(script, "[^\n]+"))) do
+                    sendmsg(line)
+                end
+                sauermaster.client:close()
+                masterserver:close()
+            end
+        end)
+    end
+
+    --Process data read from the server and send it to the client.
+    function sauermaster:processData(client, data)
+        if data == "" then return end
+        data = string.gsub(data, "addserver ", "")
+        data = string.gsub(data, "\n", "")
+        print_debug("[MASTERCLIENT] "..data)
+        sendmsg('"'..data..'"')
+    end
+
+    -- Initiate Connection
+    sauermaster:connectServer(sauermaster.client)
+end
+
+-- Generate chalauth challenge from a public key
+function generate_challenge(key)
+    local key = crypto.sauerecc.key(key)
+    local gen_challenge = key:generate_challenge()
+    return gen_challenge
 end
 
 -- Send a response to the client
@@ -105,8 +138,8 @@ function master:processData(server, data)
     
 	-- List handler
 	if data.find(data,"list") then
-		sendmsg(script)
-        masterserver:close()
+        sendmsg("serverlist = [")
+        send_serverlist(masterserver)
 	end
     
 	-- ReqAuth Handler
@@ -163,12 +196,3 @@ script = file:read("*all")
 master.server:listen()
 
 accept_next(master.server)
-
-    -- master.client:async_send("list", function(errmsg)
-        -- if errmsg then
-            -- master:handleError(errmsg)
-            -- return 
-        -- end
-    -- end)
-    
-    -- readData(master.client)

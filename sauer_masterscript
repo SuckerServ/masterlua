@@ -1,5 +1,6 @@
-echo (concatword (orange "HELLO WORLD"))
-echo (concatword (yellow "Welcome on ") (green "piernov")  "'s" (red " Master") (blue " Server!"))
-addserver piernov.org 28785
-addserver piernov.org 29785
-addserver dm-clan.ath.cx 50000
+echo "6HELLO WORLD"
+echo (concatword "2Welcome on 0piernov" "'s" "3 Master5 Server!")
+
+looplist server $serverlist [
+    addserver $server
+]
