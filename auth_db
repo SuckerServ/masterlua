@@ -1,0 +1,9 @@
+-- Add 'suckerserv' domain
+users["suckerserv"] =  {}
+-- Add 'suckerserv:admin' domain, useless if using SuckerServ trunk, just activate auth/privileges module
+users["suckerserv:admin"] =  {}
+
+-- Add 'piernov' user in 'suckerserv' domain with public key '+6bf4eb8e23fa8447098eeaca4f4f5eafce25cedd4a5616a0' and 'admin' rights
+users["suckerserv"]["piernov"] = {"+6bf4eb8e23fa8447098eeaca4f4f5eafce25cedd4a5616a0", "admin"}
+-- Copy 'piernov' user to 'suckerserv:admin' domain, useless if using SuckerServ trunk, just activate auth/privileges module
+users["suckerserv:admin"]["piernov"] = users["suckerserv"]["piernov"]
